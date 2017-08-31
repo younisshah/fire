@@ -8,6 +8,13 @@ command to using Consistent Hashing.
 
 __This is a work in progress__
 
+### Dependencies
+
+Fire uses:
+
+1) [ZeroMQ](zeromq.org)
+2) [Cello](http://libcello.org)
+
 ####Licence
 
 GNU-GPL
