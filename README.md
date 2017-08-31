@@ -1,4 +1,4 @@
-### fire
+# Fire
 
 Fire is a Redis command analyser. 
 
