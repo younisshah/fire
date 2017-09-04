@@ -15,6 +15,14 @@ Fire uses:
 1) [ZeroMQ](zeromq.org)
 2) [Cello](http://libcello.org)
 
+### Run
+Assuming you've installed `ZeroMQ` and `Cello` and cloned `fire`, run fire like this:
+
+```bash
+> gcc -std=gnu99 -Wall ./fire.c -lzmq -lCello -lm -lpthread -o fire
+> ./fire
+```
+
 #### Licence
 
 GNU-GPL
