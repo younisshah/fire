@@ -23,6 +23,14 @@ Assuming you've installed `ZeroMQ` and `Cello` and cloned `fire`, run fire like 
 > ./fire
 ```
 
+If everything went well, you'll be greeted with following output:
+
+```html
+[+] Starting ZMQ fire TCP server.
+[+] Binding to tcp://*:5555
+[+] DONE. Waiting for incoming fire requests...
+```
+
 #### Licence
 
 GNU-GPL
