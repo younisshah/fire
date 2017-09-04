@@ -1,3 +1,4 @@
 client
+client.c
 main
 cmake-build-debug
