@@ -23,10 +23,16 @@ var build_redis_accessor_single_key_cmds();
 
 var build_redis_accessor_multiple_key_cmds();
 
+var build_redis_mutating_multiple_kv_cmds();
+
+void handle_multiple_keys(char *, char *, void *);
+
 void handle_single(char *, void *);
 
 char *get_cmd(char *str);
 
 char *get_key();
+
+var get_single_as_json(char *);
 
 #endif //FIRE_FIRE_H

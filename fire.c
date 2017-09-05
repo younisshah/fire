@@ -2,6 +2,7 @@
 #include <assert.h>
 #include "Cello.h"
 #include "fire.h"
+#include <string.h>
 
 //
 // Created by galileo on 31/8/17.
@@ -10,7 +11,8 @@
 int main(int argc, char **argv) {
 
     var sing_mutating_commands = build_redis_mutating_single_key_cmds();
-    var mul_mutating_commands = build_redis_mutating_multiple_key_cmds();
+    var mul_mutating_keys_commands = build_redis_mutating_multiple_key_cmds();
+    var mul_mutating_kv_commands = build_redis_mutating_multiple_kv_cmds();
 
     var sing_accessor_commands = build_redis_accessor_single_key_cmds();
     var mul_accessor_commands = build_redis_accessor_multiple_key_cmds();
@@ -18,24 +20,27 @@ int main(int argc, char **argv) {
     void *context = zmq_ctx_new();
     void *responder = zmq_socket(context, ZMQ_REP);
 
-    puts("[+] Starting ZMQ fire TCP server.");
+    puts("[+] Starting ZMQ fire TCP server Bada chill maar.");
     printf("[+] Binding to %s\n", FIRE_BIND_ADDRESS);
 
     int rc = zmq_bind(responder, FIRE_BIND_ADDRESS);
     assert(rc == 0);
 
-    puts("[+] DONE. Waiting for incoming fire requests...");
+    puts("[+] DONE. Waiting for incoming fire requests chill maar yaar ...");
 
     char buffer[ZMQ_BUFFER_SIZE];
     while (1) {
         zmq_recv(responder, buffer, ZMQ_BUFFER_SIZE, 0);
         printf("Fire received:  %s\n", buffer);
+        char *command = strdup(buffer);
         char *cmd_name = get_cmd(buffer);
         if (cmd_name != NULL) {
             if ((search(sing_mutating_commands, $S(cmd_name)) == true) ||
                 ((search(sing_accessor_commands, $S(cmd_name)) == true))) {
                 char *key = get_key();
                 handle_single(key, responder);
+            } else if ((search(mul_mutating_keys_commands, $S(cmd_name))) == true) {
+                handle_multiple_keys(cmd_name, command, responder);
             } else {
                 zmq_send(responder, COMMAND_NOT_FOUND, 18, 0);
             }
@@ -79,13 +84,39 @@ char *get_key() {
 void handle_single(char *key, void *responder) {
     if (key != NULL) {
         puts("[+] Sending key and metadata...");
-        var cello_key = new(String, $S(key));
-        append(cello_key, $S(SINGLE));
-        append(cello_key, $S(NOOP));
-        zmq_send(responder, c_str(cello_key), len(cello_key), 0);
+        var json = get_single_as_json(key);
+        zmq_send(responder, c_str(json), len(json), 0);
         puts("[+] DONE.");
     } else {
         zmq_send(responder, NO_KEY_FOUND, 13, 0);
+    }
+}
+
+var get_single_as_json(char *key) {
+    var json = new(String, $S("{\"key\":"));
+    var cello_key = new(String, $S(key));
+    append(json, cello_key);
+    append(json, $S(", \"key_kind\": \"SINGLE\", \"OP\": \"NOOP\"}"));
+    return json;
+}
+
+void handle_multiple_keys(char *cmd_name, char *full_cmd, void *responder) {
+    if (strcmp(cmd_name, "UNLINK") == 0) {
+
+        var keys = new(Array, String);
+        printf("full cmd %s\n", full_cmd);
+        char *command = strdup(full_cmd);
+        char *token, *to_free;
+
+        to_free = command;
+        while ((token = strsep(&command, " ")) != NULL) {
+            push(keys, $S(token));
+            printf("token :%s \n", token);
+        }
+
+        free(to_free);
+
+        zmq_send(responder, "UNLINK Chill", 18, 0);
     }
 }
 
@@ -160,13 +191,16 @@ var build_redis_mutating_multiple_key_cmds() {
     push(commands, $S("BLPOP"));
     push(commands, $S("BRPOP"));
 
-    push(commands, $S("BRPOP"));
-    push(commands, $S("BRPOP"));
+    push(commands, $S("UNLINK"));
+
+    return commands;
+}
+
+var build_redis_mutating_multiple_kv_cmds() {
+    var commands = new(Array, String);
 
     push(commands, $S("MSET"));
     push(commands, $S("MSETNX"));
-
-    push(commands, $S("UNLINK"));
 
     return commands;
 }
