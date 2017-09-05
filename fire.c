@@ -9,7 +9,11 @@
 
 int main(int argc, char **argv) {
 
-    var mutating_commands = build_redis_mutating_single_key_cmds();
+    var sing_mutating_commands = build_redis_mutating_single_key_cmds();
+    var mul_mutating_commands = build_redis_mutating_multiple_key_cmds();
+
+    var sing_accessor_commands = build_redis_accessor_single_key_cmds();
+    var mul_accessor_commands = build_redis_accessor_multiple_key_cmds();
 
     void *context = zmq_ctx_new();
     void *responder = zmq_socket(context, ZMQ_REP);
@@ -27,24 +31,16 @@ int main(int argc, char **argv) {
         zmq_recv(responder, buffer, ZMQ_BUFFER_SIZE, 0);
         printf("Fire received:  %s\n", buffer);
         char *cmd_name = get_cmd(buffer);
-        printf("cmd: %s\n", cmd_name);
         if (cmd_name != NULL) {
-            if (search(mutating_commands, $S(cmd_name)) == true) {
+            if ((search(sing_mutating_commands, $S(cmd_name)) == true) ||
+                ((search(sing_accessor_commands, $S(cmd_name)) == true))) {
                 char *key = get_key();
-                if (key != NULL) {
-                    printf("KEY: %s-\n", key);
-                    puts("[+] Sending key...");
-                    zmq_send(responder, key, len($S(key)), 0);
-                    puts("[+] DONE.");
-                } else {
-                    /// KEY not present TODO
-                    char *not_found  = "No redis key found!";
-                    zmq_send(responder, not_found, len($S(not_found)), 0);
-                }
+                handle_single(key, responder);
+            } else {
+                zmq_send(responder, COMMAND_NOT_FOUND, 18, 0);
             }
         } else {
-            char *no_cmd = "No command found";
-            zmq_send(responder, no_cmd, len($S(no_cmd)), 0);
+            zmq_send(responder, COMMAND_NOT_FOUND, 18, 0);
         }
     }
 }
@@ -75,6 +71,24 @@ char *get_key() {
     return NULL;
 }
 
+/**
+ * Handles Single key mutator or accessor Redis command
+ * @param key
+ * @param responder
+ */
+void handle_single(char *key, void *responder) {
+    if (key != NULL) {
+        puts("[+] Sending key and metadata...");
+        var cello_key = new(String, $S(key));
+        append(cello_key, $S(SINGLE));
+        append(cello_key, $S(NOOP));
+        zmq_send(responder, c_str(cello_key), len(cello_key), 0);
+        puts("[+] DONE.");
+    } else {
+        zmq_send(responder, NO_KEY_FOUND, 13, 0);
+    }
+}
+
 var build_redis_mutating_single_key_cmds() {
 
     var commands = new(Array, String);
@@ -83,6 +97,9 @@ var build_redis_mutating_single_key_cmds() {
     push(commands, $S("DECR"));
     push(commands, $S("DECRBY"));
     push(commands, $S("DEL"));
+
+    push(commands, $S("EXPIRE"));
+    push(commands, $S("EXPIREAT"));
 
     push(commands, $S("GEOADD"));
     push(commands, $S("GEOHASH"));
@@ -129,9 +146,97 @@ var build_redis_mutating_single_key_cmds() {
     push(commands, $S("SETNX"));
     push(commands, $S("SETRANGE"));
     push(commands, $S("SPOP"));
+    push(commands, $S("SREM"));
 
     push(commands, $S("ZADD"));
     push(commands, $S("ZINCRBY"));
+
+    return commands;
+}
+
+var build_redis_mutating_multiple_key_cmds() {
+    var commands = new(Array, String);
+
+    push(commands, $S("BLPOP"));
+    push(commands, $S("BRPOP"));
+
+    push(commands, $S("BRPOP"));
+    push(commands, $S("BRPOP"));
+
+    push(commands, $S("MSET"));
+    push(commands, $S("MSETNX"));
+
+    push(commands, $S("UNLINK"));
+
+    return commands;
+}
+
+var build_redis_accessor_single_key_cmds() {
+    var commands = new(Array, String);
+
+    push(commands, $S("GEOPOS"));
+    push(commands, $S("GEODIST"));
+    push(commands, $S("GEORADIUS"));
+    push(commands, $S("GEORADIUSBYMEMBER"));
+    push(commands, $S("GET"));
+    push(commands, $S("GETBIT"));
+    push(commands, $S("GETRANGE"));
+
+    push(commands, $S("HEXISTS"));
+    push(commands, $S("HGET"));
+    push(commands, $S("HGETALL"));
+    push(commands, $S("HKEYS"));
+    push(commands, $S("HLEN"));
+    push(commands, $S("HMGET"));
+    push(commands, $S("HSTRLEN"));
+    push(commands, $S("HVALS"));
+    push(commands, $S("HSCAN"));
+
+    push(commands, $S("LINDEX"));
+    push(commands, $S("LLEN"));
+    push(commands, $S("LRANGE"));
+
+    push(commands, $S("PTTL"));
+
+    push(commands, $S("SCARD"));
+    push(commands, $S("SISMEMBER"));
+    push(commands, $S("SISMEMBERS"));
+    push(commands, $S("SRANDMEMBER"));
+    push(commands, $S("STRLEN"));
+
+    push(commands, $S("TTL"));
+    push(commands, $S("TYPE"));
+
+    push(commands, $S("ZCARD"));
+    push(commands, $S("ZCOUNT"));
+    push(commands, $S("ZLEXCOUNT"));
+    push(commands, $S("ZRANGE"));
+    push(commands, $S("ZRANGEBYLX"));
+    push(commands, $S("ZREVRANGEBYLX"));
+    push(commands, $S("ZRANGEBYSCORE"));
+    push(commands, $S("ZRANK"));
+    push(commands, $S("ZREM"));
+    push(commands, $S("ZREMBYLX"));
+    push(commands, $S("ZREMRANGEBYLX"));
+    push(commands, $S("ZREMRANGEBYRANK"));
+    push(commands, $S("ZREMRANGEBYSCORE"));
+    push(commands, $S("ZREVRANGE"));
+    push(commands, $S("ZREVRANGEBYSCORE"));
+    push(commands, $S("ZREVRANK"));
+    push(commands, $S("ZSCORE"));
+    push(commands, $S("ZSCAN"));
+
+    return commands;
+}
+
+var build_redis_accessor_multiple_key_cmds() {
+    var commands = new(Array, String);
+
+    push(commands, $S("EXISTS"));
+
+    push(commands, $S("MGET"));
+
+    push(commands, $S("PFCOUNT"));
 
     return commands;
 }

@@ -6,13 +6,24 @@
 #define FIRE_FIRE_H
 
 #define FIRE_BIND_ADDRESS "tcp://*:5555"
-#define ZMQ_BUFFER_SIZE 512
+#define ZMQ_BUFFER_SIZE 2048
+
+#define NO_KEY_FOUND "NO_KEY_FOUND"
+#define COMMAND_NOT_FOUND "COMMAND_NOT_FOUND"
+#define SINGLE " SINGLE"
+#define NOOP " NOOP"
 
 bool search(var commands, var incoming_cmd);
 
 var build_redis_mutating_single_key_cmds();
 
-char *build_redis_accessor_cmd_array();
+var build_redis_mutating_multiple_key_cmds();
+
+var build_redis_accessor_single_key_cmds();
+
+var build_redis_accessor_multiple_key_cmds();
+
+void handle_single(char *, void *);
 
 char *get_cmd(char *str);
 
