@@ -25,7 +25,9 @@ var build_redis_accessor_multiple_key_cmds();
 
 var build_redis_mutating_multiple_kv_cmds();
 
-void handle_multiple_keys(char *, char *, void *);
+void handle_mutating_multiple_keys(char *, char *, void *);
+
+void handle_accessor_multiple_keys(char *, void *);
 
 void handle_single(char *, void *);
 

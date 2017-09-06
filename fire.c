@@ -39,7 +39,9 @@ int main(int argc, char **argv) {
                 char *key = get_key();
                 handle_single(key, responder);
             } else if ((search(mul_mutating_keys_commands, $S(cmd_name))) == true) {
-                handle_multiple_keys(cmd_name, command, responder);
+                handle_mutating_multiple_keys(cmd_name, command, responder);
+            } else if ((search(mul_accessor_commands, $S(cmd_name))) == true) {
+                handle_accessor_multiple_keys(command, responder);
             } else {
                 zmq_send(responder, COMMAND_NOT_FOUND, 18, 0);
             }
@@ -99,8 +101,7 @@ var get_single_as_json(char *key) {
     return json;
 }
 
-void handle_multiple_keys(char *cmd_name, char *full_cmd, void *responder) {
-
+void handle_mutating_multiple_keys(char *cmd_name, char *full_cmd, void *responder) {
 
     var keys = new(Array, String);
     char *token = NULL;
@@ -114,9 +115,39 @@ void handle_multiple_keys(char *cmd_name, char *full_cmd, void *responder) {
     var json = new(String, $S("\"{\"keys\":["));
     size_t count = len(keys);
     if (strcmp(cmd_name, "UNLINK") != 0) {
-        rem(keys, $S(c_str(get(keys, $I( (count - 1) )))));
+        rem(keys, $S(c_str(get(keys, $I((count - 1))))));
     }
     count = len(keys);
+    for (int i = 0; i < count; i++) {
+        char *k = c_str(get(keys, $I(i)));
+        append(json, $S(k));
+        if (i == count - 1) {
+            append(json, $S("]"));
+        } else {
+            append(json, $S(","));
+        }
+    }
+    append(json, $S(", \"key_kind\": \"MULTIPLE\", \"cmd_kind\": \"K\"}\""));
+    zmq_send(responder, c_str(json), len(json), 0);
+}
+
+void handle_accessor_multiple_keys(char *full_cmd, void *responder) {
+
+    var keys = new(Array, String);
+    char *token = NULL;
+    strtok(full_cmd, " "); // Get rid of the first token which is the command name.
+    do {
+        token = strtok(NULL, " ");
+        if (token != NULL) {
+            push(keys, $S(strdup(token)));
+        }
+    } while (token != NULL);
+    var json = new(String, $S("\"{\"keys\":["));
+    size_t count = len(keys);
+    /*if (strcmp(cmd_name, "UNLINK") != 0) {
+        rem(keys, $S(c_str(get(keys, $I( (count - 1) )))));
+    }
+    count = len(keys);*/
     for (int i = 0; i < count; i++) {
         char *k = c_str(get(keys, $I(i)));
         append(json, $S(k));
