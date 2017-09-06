@@ -101,30 +101,33 @@ var get_single_as_json(char *key) {
 
 void handle_multiple_keys(char *cmd_name, char *full_cmd, void *responder) {
 
-    if (strcmp(cmd_name, "UNLINK") == 0) {
-        var keys = new(Array, String);
-        char *token = NULL;
-        strtok(full_cmd, " "); // Get rid of the first token which is the command name.
-        do {
-            token = strtok(NULL, " ");
-            if (token != NULL) {
-                push(keys, $S(strdup(token)));
-            }
-        } while (token != NULL);
-        var json = new(String, $S("\"{\"keys\":["));
-        size_t count = len(keys);
-        for (int i = 0; i < count; i++) {
-            char *k = c_str(get(keys, $I(i)));
-            append(json, $S(k));
-            if (i == count - 1) {
-                append(json, $S("]"));
-            } else {
-                append(json, $S(","));
-            }
+
+    var keys = new(Array, String);
+    char *token = NULL;
+    strtok(full_cmd, " "); // Get rid of the first token which is the command name.
+    do {
+        token = strtok(NULL, " ");
+        if (token != NULL) {
+            push(keys, $S(strdup(token)));
         }
-        append(json, $S(", \"key_kind\": \"MULTIPLE\", \"cmd_kind\": \"K\"}\""));
-        zmq_send(responder, c_str(json), len(json), 0);
+    } while (token != NULL);
+    var json = new(String, $S("\"{\"keys\":["));
+    size_t count = len(keys);
+    if (strcmp(cmd_name, "UNLINK") != 0) {
+        rem(keys, $S(c_str(get(keys, $I( (count - 1) )))));
     }
+    count = len(keys);
+    for (int i = 0; i < count; i++) {
+        char *k = c_str(get(keys, $I(i)));
+        append(json, $S(k));
+        if (i == count - 1) {
+            append(json, $S("]"));
+        } else {
+            append(json, $S(","));
+        }
+    }
+    append(json, $S(", \"key_kind\": \"MULTIPLE\", \"cmd_kind\": \"K\"}\""));
+    zmq_send(responder, c_str(json), len(json), 0);
 }
 
 var build_redis_mutating_single_key_cmds() {
