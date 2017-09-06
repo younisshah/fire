@@ -12,7 +12,7 @@ int main(void) {
 
     char buffer[100];
     printf("Sending Hola\n");
-    zmq_send(requester, "UNLINK key1 key2 key3 key4", 100, 0);
+    zmq_send(requester, "UNLINK key1", 100, 0);
     zmq_recv(requester, buffer, 100, 0);
     printf("Received %s", buffer);
     zmq_close(requester);

@@ -2,7 +2,6 @@
 #include <assert.h>
 #include "Cello.h"
 #include "fire.h"
-#include <string.h>
 
 //
 // Created by galileo on 31/8/17.
@@ -20,13 +19,13 @@ int main(int argc, char **argv) {
     void *context = zmq_ctx_new();
     void *responder = zmq_socket(context, ZMQ_REP);
 
-    puts("[+] Starting ZMQ fire TCP server Bada chill maar.");
+    puts("[+] Starting ZMQ fire TCP server.");
     printf("[+] Binding to %s\n", FIRE_BIND_ADDRESS);
 
     int rc = zmq_bind(responder, FIRE_BIND_ADDRESS);
     assert(rc == 0);
 
-    puts("[+] DONE. Waiting for incoming fire requests chill maar yaar ...");
+    puts("[+] DONE. Waiting for incoming fire requests");
 
     char buffer[ZMQ_BUFFER_SIZE];
     while (1) {
@@ -96,27 +95,35 @@ var get_single_as_json(char *key) {
     var json = new(String, $S("{\"key\":"));
     var cello_key = new(String, $S(key));
     append(json, cello_key);
-    append(json, $S(", \"key_kind\": \"SINGLE\", \"OP\": \"NOOP\"}"));
+    append(json, $S(", \"key_kind\": \"SINGLE\", \"cmd_kind\": \"NOOP\"}"));
     return json;
 }
 
 void handle_multiple_keys(char *cmd_name, char *full_cmd, void *responder) {
+
     if (strcmp(cmd_name, "UNLINK") == 0) {
-
         var keys = new(Array, String);
-        printf("full cmd %s\n", full_cmd);
-        char *command = strdup(full_cmd);
-        char *token, *to_free;
-
-        to_free = command;
-        while ((token = strsep(&command, " ")) != NULL) {
-            push(keys, $S(token));
-            printf("token :%s \n", token);
+        char *token = NULL;
+        strtok(full_cmd, " "); // Get rid of the first token which is the command name.
+        do {
+            token = strtok(NULL, " ");
+            if (token != NULL) {
+                push(keys, $S(strdup(token)));
+            }
+        } while (token != NULL);
+        var json = new(String, $S("\"{\"keys\":["));
+        size_t count = len(keys);
+        for (int i = 0; i < count; i++) {
+            char *k = c_str(get(keys, $I(i)));
+            append(json, $S(k));
+            if (i == count - 1) {
+                append(json, $S("]"));
+            } else {
+                append(json, $S(","));
+            }
         }
-
-        free(to_free);
-
-        zmq_send(responder, "UNLINK Chill", 18, 0);
+        append(json, $S(", \"key_kind\": \"MULTIPLE\", \"cmd_kind\": \"K\"}\""));
+        zmq_send(responder, c_str(json), len(json), 0);
     }
 }
 
