@@ -33,6 +33,7 @@ int main(int argc, char **argv) {
         printf("Fire received:  %s\n", buffer);
         char *command = strdup(buffer);
         char *cmd_name = get_cmd(buffer);
+        printf("CMD NAME: %s\n", cmd_name);
         if (cmd_name != NULL) {
             if ((search(sing_mutating_commands, $S(cmd_name)) == true) ||
                 ((search(sing_accessor_commands, $S(cmd_name)) == true))) {
@@ -42,6 +43,8 @@ int main(int argc, char **argv) {
                 handle_mutating_multiple_keys(cmd_name, command, responder);
             } else if ((search(mul_accessor_commands, $S(cmd_name))) == true) {
                 handle_accessor_multiple_keys(command, responder);
+            } else if ((search(mul_mutating_kv_commands, $S(cmd_name))) == true) {
+                handle_mutating_multiple_kv_keys(command, responder);
             } else {
                 zmq_send(responder, COMMAND_NOT_FOUND, 18, 0);
             }
@@ -144,10 +147,6 @@ void handle_accessor_multiple_keys(char *full_cmd, void *responder) {
     } while (token != NULL);
     var json = new(String, $S("\"{\"keys\":["));
     size_t count = len(keys);
-    /*if (strcmp(cmd_name, "UNLINK") != 0) {
-        rem(keys, $S(c_str(get(keys, $I( (count - 1) )))));
-    }
-    count = len(keys);*/
     for (int i = 0; i < count; i++) {
         char *k = c_str(get(keys, $I(i)));
         append(json, $S(k));
@@ -158,6 +157,30 @@ void handle_accessor_multiple_keys(char *full_cmd, void *responder) {
         }
     }
     append(json, $S(", \"key_kind\": \"MULTIPLE\", \"cmd_kind\": \"K\"}\""));
+    zmq_send(responder, c_str(json), len(json), 0);
+}
+
+void handle_mutating_multiple_kv_keys(char *full_cmd, void *responder) {
+    var json = new(String, $S("\"{\"keys\": ["));
+    char *key = NULL, *value = NULL;
+    strtok(full_cmd, " ");
+    do {
+        key = strtok(NULL, " ");
+        value = strtok(NULL, " ");
+        if (key != NULL && value != NULL) {
+            printf("%s, %s\n", key, value);
+            append(json, $S("{\""));
+            append(json, $S(key));
+            append(json, $S("\""));
+            append(json, $S(":"));
+            append(json, $S(value));
+            append(json, $S("},"));
+        }
+    } while (key != NULL || value != NULL);
+    char *tmp = c_str(json);
+    size_t lastIndex = len(json) - 1;
+    memmove(&tmp[lastIndex], &tmp[lastIndex + 1], strlen(tmp) - lastIndex); // remove the trailing extra ','
+    append(json, $S("], \"key_kind\": \"MULTIPLE\", \"cmd_kind\": \"KV\"}\""));
     zmq_send(responder, c_str(json), len(json), 0);
 }
 
