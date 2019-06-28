@@ -6,7 +6,6 @@
 //
 // Created by galileo on 31/8/17.
 //
-
 int main(int argc, char **argv) {
 
     var sing_mutating_commands = build_redis_mutating_single_key_cmds();
